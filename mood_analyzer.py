@@ -180,10 +180,10 @@ class MoodAnalyzer:
         Turn the numeric score for a piece of text into a mood label.
 
         The mapping used here:
-          - score > 2   -> "positive"
-          - score < -2  -> "negative"
+          - score > 1   -> "positive"
+          - score < -1  -> "negative"
           - score == 0  -> "neutral"
-          - anything in between (-2, -1, 1, 2) -> "mixed"
+          - anything in between (-1, 0, 1) -> "mixed"
 
         The wide "mixed" band means a text needs a clear pile-up of signals
         (a strong emoji plus a word, or several words) before the model
@@ -192,9 +192,9 @@ class MoodAnalyzer:
         """
         score = self.score_text(text)
 
-        if score > 2:
+        if score > 1:
             return "positive"
-        if score < -2:
+        if score < -1:
             return "negative"
         if score == 0:
             return "neutral"
