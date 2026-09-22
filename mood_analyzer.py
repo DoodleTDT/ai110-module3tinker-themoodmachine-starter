@@ -34,6 +34,36 @@ def _is_emoji(ch: str) -> bool:
     return any(lo <= ord(ch) <= hi for lo, hi in EMOJI_RANGES)
 
 
+# ---------------------------------------------------------------------
+# Scoring tables
+# ---------------------------------------------------------------------
+
+# Emojis and slang carry a STRONGER signal than an ordinary word, so they
+# get weights of +/-2 while a plain word from the lists is worth +/-1.
+# (Emoticon keys are lowercase because preprocess lowercases them.)
+STRONG_SIGNALS: Dict[str, int] = {
+    # emoticons
+    ":)": 2, ":-)": 2, ":d": 2, "<3": 2, ";)": 1,
+    ":(": -2, ":-(": -2, ":'(": -2, ":/": -1,
+    # unicode emoji
+    "😂": 2, "🥰": 2, "❤": 2, "✨": 1, "🔥": 2,
+    "😭": -2, "😡": -2, "🥲": -1, "💀": -1,
+    # slang
+    "lol": 1, "lmao": 1, "slay": 2, "goated": 2, "baddie": 2, "vibes": 1,
+    "meh": -1, "ugh": -1, "cringe": -2, "sucks": -2, "trash": -2, "bombed": -2,
+}
+
+# A negation word flips the sign of the next couple of scored tokens,
+# so "not happy" reads negative and "not bad" reads positive.
+NEGATION_WORDS = {
+    "not", "no", "never", "none", "nothing", "cant", "cannot", "dont",
+    "wont", "aint", "isnt", "wasnt", "hardly", "barely",
+}
+
+# How many tokens after a negation word stay flipped.
+NEGATION_WINDOW = 2
+
+
 class MoodAnalyzer:
     """
     A very simple, rule based mood classifier.
@@ -102,22 +132,44 @@ class MoodAnalyzer:
         Positive words increase the score.
         Negative words decrease the score.
 
-        TODO: You must choose AT LEAST ONE modeling improvement to implement.
-        For example:
-          - Handle simple negation such as "not happy" or "not bad"
-          - Count how many times each word appears instead of just presence
-          - Give some words higher weights than others (for example "hate" < "annoyed")
-          - Treat emojis or slang (":)", "lol", "💀") as strong signals
+        Modeling improvements implemented here:
+          - Simple negation: a word from NEGATION_WORDS flips the sign of the
+            next NEGATION_WINDOW scored tokens, so "not happy" is negative
+            and "not bad" is positive.
+          - Strong signals: emojis and slang from STRONG_SIGNALS are worth
+            +/-2 instead of the +/-1 an ordinary word gets.
+          - Repeats count: every occurrence of a word adds to the score,
+            not just the first one.
         """
-        # TODO: Implement this method.
-        #   1. Call self.preprocess(text) to get tokens.
-        #   2. Loop over the tokens.
-        #   3. Increase the score for positive words, decrease for negative words.
-        #   4. Return the total score.
-        #
-        # Hint: if you implement negation, you may want to look at pairs of tokens,
-        # like ("not", "happy") or ("never", "fun").
-        pass
+        tokens = self.preprocess(text)
+
+        score = 0
+        flip_remaining = 0  # how many upcoming tokens the negation still affects
+
+        for token in tokens:
+            # A negation word scores nothing itself; it arms the flip.
+            if token in NEGATION_WORDS:
+                flip_remaining = NEGATION_WINDOW
+                continue
+
+            # Emojis and slang win over the plain word lists because they
+            # are the stronger signal.
+            if token in STRONG_SIGNALS:
+                value = STRONG_SIGNALS[token]
+            elif token in self.positive_words:
+                value = 1
+            elif token in self.negative_words:
+                value = -1
+            else:
+                value = 0
+
+            if flip_remaining > 0:
+                value = -value
+                flip_remaining -= 1
+
+            score += value
+
+        return score
 
     # ---------------------------------------------------------------------
     # Label prediction
