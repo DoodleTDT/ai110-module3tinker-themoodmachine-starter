@@ -13,6 +13,26 @@ from typing import List, Dict, Tuple, Optional
 
 from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
 
+import string
+
+
+# ---------------------------------------------------------------------
+# Emoji helpers (module level so preprocess can call them directly)
+# ---------------------------------------------------------------------
+
+# Text emoticons to keep intact (matched before lowercasing, so ":D" works).
+EMOTICONS = [":-)", ":)", ":D", ":-(", ":(", ":'(", ":/", ";)", "<3"]
+
+# Codepoint ranges that count as pictographic emoji.
+EMOJI_RANGES = [
+    (0x1F300, 0x1FAFF),  # 😂 💀 🥲 and friends
+    (0x2600, 0x27BF),    # ☀ ❤ ✨ dingbats
+]
+
+
+def _is_emoji(ch: str) -> bool:
+    return any(lo <= ord(ch) <= hi for lo, hi in EMOJI_RANGES)
+
 
 class MoodAnalyzer:
     """
@@ -40,22 +60,36 @@ class MoodAnalyzer:
         """
         Convert raw text into a list of tokens the model can work with.
 
-        TODO: Improve this method.
-
-        Right now, it does the minimum:
-          - Strips leading and trailing whitespace
-          - Converts everything to lowercase
-          - Splits on spaces
-
-        Ideas to improve:
-          - Remove punctuation
-          - Handle simple emojis separately (":)", ":-(", "🥲", "😂")
-          - Normalize repeated characters ("soooo" -> "soo")
+        Emojis are pulled out before punctuation is stripped, otherwise
+        ":)" and ":-(" would be deleted entirely.
         """
-        cleaned = text.strip().lower()
-        tokens = cleaned.split()
 
-        return tokens
+        text = text.strip()
+        emoji_tokens: List[str] = []
+
+        # 1. Pull out text emoticons FIRST, while the punctuation is still there.
+        #    Longest first so ":-)" isn't chewed up by a shorter pattern.
+        for face in sorted(EMOTICONS, key=len, reverse=True):
+            while face in text:
+                emoji_tokens.append(face.lower())
+                text = text.replace(face, " ", 1)
+
+        text = text.lower()
+
+        # 2. Split unicode emoji off into their own tokens.
+        kept = []
+        for ch in text:
+            if _is_emoji(ch):
+                emoji_tokens.append(ch)
+            else:
+                kept.append(ch)
+        text = "".join(kept)
+
+        # 3. Now it's safe to drop punctuation and split on whitespace.
+        cleaned = text.translate(str.maketrans("", "", string.punctuation))
+
+        return cleaned.split() + emoji_tokens
+
 
     # ---------------------------------------------------------------------
     # Scoring logic
