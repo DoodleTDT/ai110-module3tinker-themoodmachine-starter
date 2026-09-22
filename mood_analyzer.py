@@ -63,6 +63,14 @@ NEGATION_WORDS = {
 # How many tokens after a negation word stay flipped.
 NEGATION_WINDOW = 2
 
+# An intensifier multiplies the next scored token instead of adding to the
+# score itself, so "so bad" hits harder than a plain "bad" and "so happy"
+# harder than "happy".
+INTENSIFIERS: Dict[str, int] = {
+    "so": 2, "very": 2, "really": 2, "super": 2, "mad": 2,
+    "extremely": 3, "absolutely": 3, "totally": 2,
+}
+
 
 class MoodAnalyzer:
     """
@@ -138,6 +146,12 @@ class MoodAnalyzer:
             and "not bad" is positive.
           - Strong signals: emojis and slang from STRONG_SIGNALS are worth
             +/-2 instead of the +/-1 an ordinary word gets.
+          - Intensifiers: a word from INTENSIFIERS ("so", "very", ...) scores
+            nothing on its own but multiplies the next token that does score,
+            so "so bad" is -2 where a plain "bad" is -1. The boost waits until
+            it finds a scoring word, so filler in between ("so incredibly
+            bad") does not waste it, and stacked intensifiers multiply
+            ("so very bad" is -4).
           - Repeats count: every occurrence of a word adds to the score,
             not just the first one.
         """
@@ -145,11 +159,19 @@ class MoodAnalyzer:
 
         score = 0
         flip_remaining = 0  # how many upcoming tokens the negation still affects
+        boost = 1  # multiplier waiting to be spent on the next scoring token
 
         for token in tokens:
             # A negation word scores nothing itself; it arms the flip.
             if token in NEGATION_WORDS:
                 flip_remaining = NEGATION_WINDOW
+                continue
+
+            # Neither does an intensifier; it just makes the next hit bigger.
+            # It stays out of the negation window too, so "not so bad" still
+            # flips onto "bad" and comes out positive.
+            if token in INTENSIFIERS:
+                boost *= INTENSIFIERS[token]
                 continue
 
             # Emojis and slang win over the plain word lists because they
@@ -162,6 +184,10 @@ class MoodAnalyzer:
                 value = -1
             else:
                 value = 0
+
+            if value != 0:
+                value *= boost
+                boost = 1  # the boost is spent on one word only
 
             if flip_remaining > 0:
                 value = -value
