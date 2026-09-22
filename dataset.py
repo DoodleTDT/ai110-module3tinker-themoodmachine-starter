@@ -50,6 +50,14 @@ SAMPLE_POSTS = [
     "This is fine",
     "So excited for the weekend",
     "I am not happy about this",
+    "Can't wait to be put through torture next week!",
+    "She's a baddie",
+    "I love hearing angry vocals in a song",
+    "Awesome, I hate it",
+    "That's so sad, Alexa play despacito",
+    "I hope the next show is better than the last one 💀",
+    "Lowkey think I bombed that test 😂",
+    "Breaking Bad is okay",
 ]
 
 # Human labels for each post above.
@@ -65,6 +73,14 @@ TRUE_LABELS = [
     "neutral",   # "This is fine"
     "positive",  # "So excited for the weekend"
     "negative",  # "I am not happy about this"
+    "negative",  # "Can't wait to be put through torture next week!"
+    "positive",  # "She's a baddie"
+    "positive",  # "I love hearing angry vocals in a song"
+    "negative",  # "Awesome, I hate it"
+    "mixed",     # "That's so sad, Alexa play despacito"
+    "mixed",     # "I hope the next show is better than the last one 💀"
+    "mixed",     # "Lowkey think I bombed that test 😂"
+    "neutral",   # "Breaking Bad is okay"
 ]
 
 # TODO: Add 5-10 more posts and labels.
