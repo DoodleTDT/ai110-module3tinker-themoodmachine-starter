@@ -23,6 +23,8 @@ POSITIVE_WORDS = [
     "chill",
     "relaxed",
     "amazing",
+    "hopeful",
+    "lucky",
 ]
 
 NEGATIVE_WORDS = [
@@ -36,6 +38,7 @@ NEGATIVE_WORDS = [
     "stressed",
     "hate",
     "boring",
+    "torture",
 ]
 
 # ---------------------------------------------------------------------
@@ -54,7 +57,6 @@ SAMPLE_POSTS = [
     "She's a baddie",
     "I love hearing angry vocals in a song",
     "Awesome, I hate it",
-    "That's so sad, Alexa play despacito",
     "I hope the next show is better than the last one 💀",
     "Lowkey think I bombed that test 😂",
     "Breaking Bad is okay",
@@ -76,9 +78,8 @@ TRUE_LABELS = [
     "negative",  # "Can't wait to be put through torture next week!"
     "positive",  # "She's a baddie"
     "positive",  # "I love hearing angry vocals in a song"
-    "negative",  # "Awesome, I hate it"
-    "mixed",     # "That's so sad, Alexa play despacito"
-    "mixed",     # "I hope the next show is better than the last one 💀"
+    "mixed",     # "Awesome, I hate it"
+    "negative",  # "I hope the next show is better than the last one 💀"
     "mixed",     # "Lowkey think I bombed that test 😂"
     "neutral",   # "Breaking Bad is okay"
 ]
