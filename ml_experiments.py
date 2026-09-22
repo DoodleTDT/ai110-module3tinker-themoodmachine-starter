@@ -11,7 +11,6 @@ from typing import List, Tuple
 
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 
 from dataset import SAMPLE_POSTS, TRUE_LABELS
 
@@ -78,7 +77,7 @@ def evaluate_on_dataset(
             correct += 1
         print(f'"{text}" -> predicted={pred_label}, true={true_label}')
 
-    accuracy = accuracy_score(labels, preds)
+    accuracy = correct / len(texts)
     print(f"\nAccuracy on this dataset: {accuracy:.2f}")
     return accuracy
 
