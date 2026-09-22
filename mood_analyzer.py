@@ -71,6 +71,13 @@ INTENSIFIERS: Dict[str, int] = {
     "extremely": 3, "absolutely": 3, "totally": 2,
 }
 
+# A "mixed" message has to argue with itself: both sides need at least this
+# many points before the label is even considered...
+MIXED_MIN_POINTS = 2
+
+# ...and the two sides have to end up this close for neither to be the winner.
+MIXED_TOLERANCE = 1
+
 
 class MoodAnalyzer:
     """
@@ -133,12 +140,18 @@ class MoodAnalyzer:
     # Scoring logic
     # ---------------------------------------------------------------------
 
-    def score_text(self, text: str) -> int:
+    def score_breakdown(self, text: str) -> Tuple[int, int]:
         """
-        Compute a numeric "mood score" for the given text.
+        Tally the positive and negative points in the text separately.
 
-        Positive words increase the score.
-        Negative words decrease the score.
+        Returns (positive_points, negative_points), both non-negative. The
+        plain score is positive_points - negative_points, but keeping the two
+        sides apart is what lets predict_label tell a genuinely two sided
+        "mixed" message ("+3 and -3") from a flat one ("nothing scored").
+
+        Points are counted AFTER the boost and the negation flip, so a token
+        lands on whichever side it actually ends up on: in "not bad" the
+        "bad" counts as a positive point, not a negative one.
 
         Modeling improvements implemented here:
           - Simple negation: a word from NEGATION_WORDS flips the sign of the
@@ -157,7 +170,8 @@ class MoodAnalyzer:
         """
         tokens = self.preprocess(text)
 
-        score = 0
+        positive_points = 0
+        negative_points = 0
         flip_remaining = 0  # how many upcoming tokens the negation still affects
         boost = 1  # multiplier waiting to be spent on the next scoring token
 
@@ -193,9 +207,20 @@ class MoodAnalyzer:
                 value = -value
                 flip_remaining -= 1
 
-            score += value
+            # Each token adds to one pile or the other, never both.
+            if value > 0:
+                positive_points += value
+            else:
+                negative_points += -value
 
-        return score
+        return positive_points, negative_points
+
+    def score_text(self, text: str) -> int:
+        """
+        Compute a single numeric "mood score": positives minus negatives.
+        """
+        positive_points, negative_points = self.score_breakdown(text)
+        return positive_points - negative_points
 
     # ---------------------------------------------------------------------
     # Label prediction
@@ -203,28 +228,42 @@ class MoodAnalyzer:
 
     def predict_label(self, text: str) -> str:
         """
-        Turn the numeric score for a piece of text into a mood label.
+        Turn the scored text into a mood label.
 
-        The mapping used here:
-          - score > 1   -> "positive"
-          - score < -1  -> "negative"
+        "mixed" is decided from the two piles of points, not from the net
+        score, because a net of 0 can mean two very different things: a text
+        that said nothing either way (neutral), or a text that said a lot in
+        both directions at once (mixed). A text is "mixed" when both sides
+        carry real weight and neither one clearly wins:
+          - at least MIXED_MIN_POINTS on the positive side, AND
+          - at least MIXED_MIN_POINTS on the negative side, AND
+          - the two sides within MIXED_TOLERANCE points of each other
+
+        Anything else falls back to the net score:
+          - score > 0   -> "positive"
+          - score < 0   -> "negative"
           - score == 0  -> "neutral"
-          - anything in between (-1, 0, 1) -> "mixed"
 
-        The wide "mixed" band means a text needs a clear pile-up of signals
-        (a strong emoji plus a word, or several words) before the model
-        commits to "positive" or "negative". These labels match the ones
-        used in TRUE_LABELS in dataset.py.
+        These labels match the ones used in TRUE_LABELS in dataset.py.
         """
-        score = self.score_text(text)
+        positive_points, negative_points = self.score_breakdown(text)
 
-        if score > 1:
+        both_sides_show_up = (
+            positive_points >= MIXED_MIN_POINTS
+            and negative_points >= MIXED_MIN_POINTS
+        )
+        sides_are_close = abs(positive_points - negative_points) <= MIXED_TOLERANCE
+
+        if both_sides_show_up and sides_are_close:
+            return "mixed"
+
+        score = positive_points - negative_points
+
+        if score > 0:
             return "positive"
-        if score < -1:
+        if score < 0:
             return "negative"
-        if score == 0:
-            return "neutral"
-        return "mixed"
+        return "neutral"
 
     # ---------------------------------------------------------------------
     # Explanations (optional but recommended)
