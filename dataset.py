@@ -25,6 +25,8 @@ POSITIVE_WORDS = [
     "amazing",
     "hopeful",
     "lucky",
+    "care",
+    "favorite",
 ]
 
 NEGATIVE_WORDS = [
@@ -39,6 +41,8 @@ NEGATIVE_WORDS = [
     "hate",
     "boring",
     "torture",
+    "anxious",
+    "depressed",
 ]
 
 # ---------------------------------------------------------------------
